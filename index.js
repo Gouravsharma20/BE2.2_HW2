@@ -168,49 +168,99 @@ async function findByPhoneNum(phoneNum){
     }
     
 }
-seedData()
+
+
+
+//[BE2.3_CW]
+
+//update Many
+
+async function updateMovie(movieId,dataToUpdate) {
+    await initializeDatabase()
+    try {
+        const hotelMovie = await Hotel.findByIdAndUpdate(movieId,dataToUpdate,{new:true})
+        console.log(`${dataToUpdate} updated successfully as ${hotelMovie}`)
+    } catch (err){
+        console.log("error loading data ",err)
+    }
+}
+
+updateMovie("6a1ed7aafdd57125f93b26ae",{rating:3.2})
+
+//update one
+
+async function updateMovieDetails(movieTitle,valueToUpdate){
+    await initializeDatabase()
+    try {
+        const changingData = await Hotel.findOneAndUpdate({name:movieTitle},valueToUpdate,{new:true})
+        console.log(`${movieTitle} updated successfully : `,changingData)
+
+    } catch(err) {
+        console.log(`Error changing movieTitle [${movieTitle}]`,err)
+    }
+}
+
+
+updateMovieDetails("The Grand Meridian",{rating:4.44})
+
+
+
+
+// seedData()
 
 // solution 1
 
-addData(newHotel1)
+// addData(newHotel1)
 
 // solution 2
 
-addData(newHotel2)
+// addData(newHotel2)
 
 
 // solution 3
 
-readHotels()
+// readHotels()
 
 
 // solution 4
 
-readHotelName('The Grand Meridian')
+// readHotelName('The Grand Meridian')
 
 // solution 5
 
-ifParkingAvailable()
+// ifParkingAvailable()
 
 // solution 6
 
-availableRestraunt()
+// availableRestraunt()
 
 //solution 7
 
-findCategory("Mid-Range")
+// findCategory("Mid-Range")
 
 //solution 8
 
-restrauntRange("$$$$ (61+)")
+// restrauntRange("$$$$ (61+)")
 
 //solution 9
 
-ratedRestro(4)
+// ratedRestro(4)
 
 //solution 10
 
-findByPhoneNum("+1299655890")
+// findByPhoneNum("+1299655890")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
