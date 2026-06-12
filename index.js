@@ -1,10 +1,19 @@
 const {initializeDatabase} = require("./db/db.connection.js")
 
+const express = require("express")
+
+const app = express()
+
 const fs = require("fs")
 
 const Hotel = require("./model/HotelModel")
+const { error } = require("console")
 
 const jsonData = fs.readFileSync("./data/hotelData.json","utf-8")
+
+app.get("/",(req,res)=>{
+    res.json("Welcoem to my express app")
+})
 
 
 const newHotel1 = {
@@ -83,21 +92,78 @@ async function readHotels(){
     await initializeDatabase()
     try{
         const allData = await Hotel.find()
-        console.log("data saved successfully : ",allData)
+        return allData
     } catch(err) {
         console.log("Error loading data",err)
     }
 }
 
+app.get("/hotels",async(req,res)=>{
+    try {
+        const allHotels = await readHotels()
+        if (!allHotels) {
+            res.status(404).json({error:"hotel data not found"})
+        } else {
+            res.status(200).json({message:"Hotel data oaded successfully",hotelData:allHotels})
+        }
+    } catch {
+        res.status(500).json({error:"an error occured while loading hotels data"})
+    }
+})
+
+
+
 async function readHotelName(hotelName){
     await initializeDatabase()
     try {
         const foundHotel = await Hotel.find({name:hotelName})
-        console.log(`${hotelName} found successfully :`,foundHotel)
+        return foundHotel
     } catch(err){
         console.log(`Error finding ${hotelName} `,err)
     }
 }
+
+app.get("/hotels/:hotelName",async(req,res)=>{
+    try {
+        const hotelFound = await readHotelName(req.params.hotelName)
+        if (hotelFound.length === 0) {
+            return res.status(404).json({error:"hotel data doesnt found"})
+        } else {
+            return res.status(200).json({message:"Hotel data found successfully",hotelData:hotelFound})
+        }
+    } catch (err) {
+        return res.status(500).json({error:"an error occured while oading hotelName"})
+    }
+})
+
+// finding api with phone number
+
+async function findByPhoneNum(phoneNum){
+    await initializeDatabase()
+    try {
+        const foundRestro  = await Hotel.find({phoneNumber:phoneNum})
+        console.log(`Restraunt with phone number ${phoneNum}: `,foundRestro)
+        return foundRestro
+    } catch(err){
+        console.log(`No data found with phone number ${phoneNum}`)
+    }
+    
+}
+
+
+app.get("/hotels/directory/:phoneNumber",async(req,res)=>{
+    try {
+        const foundHotels = await findByPhoneNum(req.params.phoneNumber)
+        if (foundHotels.length === 0) {
+            return res.status(404).json({error:"hotel data with phone number not found",hotelData:foundHotels})
+        } else {
+            return res.status(200).json({message:"phone number found successfully",foundData:foundHotels})
+        }
+    } catch (err) {
+        console.log("Route error : ",err)
+        return res.status(500).json({error:"an error occured while loading phone number"})
+    }
+})
 
 async function ifParkingAvailable(){
     await initializeDatabase()
@@ -112,7 +178,7 @@ async function ifParkingAvailable(){
 }
 
 async function availableRestraunt(){
-    initializeDatabase()
+    await initializeDatabase()
     try {
         const availabelRestro = Hotel.find({isRestaurantAvailable: true})
         console.log("list of available Restraunts:",availabelRestro)
@@ -124,50 +190,68 @@ async function availableRestraunt(){
 
 async function findCategory(category){
     await initializeDatabase()
-
     try {
         const categoryHotel = await Hotel.find({category:category})
         console.log(`${category} restraunts : `,categoryHotel)
+        return categoryHotel
 
     } catch(err) {
         console.log(`Error finding ${category} hotels`)
     }
 }
 
-async function restrauntRange(restroRange){
-    await initializeDatabase()
+app.get("/hotels/category/:hotelCategory",async(req,res)=>{
     try {
-        const foundRange = await Hotel.find({priceRange:restroRange})
-        console.log(`Restraunt fount with range ${restrauntRange} : `,foundRange)
+        const foundHotel = await findCategory(req.params.hotelCategory)
 
+        if (foundHotel.length === 0) {
+            return res.status(404).json({error:"an error occured while loading restraunt data"})
+        } else {
+            return res.status(200).json({message:"hotel with category found successfully",hotelData:foundHotel})
+        }
 
-    } catch (err) {
-        console.log(`Error loading data of range ${restrauntRange}`)
+    } catch(err) {
+        return res.status(500).json({error:"an error occured while loading hotel category"})
     }
-}
+})
+
+// async function restrauntRange(restroRange){
+//     await initializeDatabase()
+//     try {
+//         const foundRange = await Hotel.find({priceRange:restroRange})
+//         console.log(`Restraunt fount with range ${restrauntRange} : `,foundRange)
+
+
+//     } catch (err) {
+//         console.log(`Error loading data of range ${restrauntRange}`)
+//     }
+// }
 
 async function ratedRestro(rating){
     await initializeDatabase()
     try {
         const foundRatingData = await Hotel.find({rating:rating})
         console.log(`Restraunt with rating ${rating} : `,foundRatingData)
+        return foundRatingData
 
     } catch (err) {
         console.log(`No data found with rating ${rating}`)
     }
 }
 
-
-async function findByPhoneNum(phoneNum){
-    await initializeDatabase
+app.get("/hotels/rating/:hotelRating",async(req,res)=>{
     try {
-        const foundRestro  = await Hotel.find({phoneNumber:phoneNum})
-        console.log(`Restraunt with phone number ${phoneNum}: `,foundRestro)
-    } catch(err){
-        console.log(`No data found with phone number ${phoneNum}`)
+        const foundHotel = await ratedRestro(req.params.hotelRating)
+        if (!foundHotel.length === 0 ) {
+            return res.status(404).json({error:`Hotel with rating ${req.params.hotelRating} not found `})
+        } else {
+            return res.status(200).json({message:"hotels found successfully",data:foundHotel})
+        }
+    } catch(err) {
+        res.status(500).json({error:"an error occoured"})
     }
-    
-}
+})
+
 
 
 
@@ -175,30 +259,30 @@ async function findByPhoneNum(phoneNum){
 
 //update Many
 
-async function updateMovie(movieId,dataToUpdate) {
-    await initializeDatabase()
-    try {
-        const hotelMovie = await Hotel.findByIdAndUpdate(movieId,dataToUpdate,{new:true})
-        console.log(`${dataToUpdate} updated successfully as ${hotelMovie}`)
-    } catch (err){
-        console.log("error loading data ",err)
-    }
-}
+// async function updateMovie(movieId,dataToUpdate) {
+//     await initializeDatabase()
+//     try {
+//         const hotelMovie = await Hotel.findByIdAndUpdate(movieId,dataToUpdate,{new:true})
+//         console.log(`${dataToUpdate} updated successfully as ${hotelMovie}`)
+//     } catch (err){
+//         console.log("error loading data ",err)
+//     }
+// }
 
 // updateMovie("6a1ed7aafdd57125f93b26ae",{rating:3.2})
 
 //update one
 
-async function updateMovieDetails(movieTitle,valueToUpdate){
-    await initializeDatabase()
-    try {
-        const changingData = await Hotel.findOneAndUpdate({name:movieTitle},valueToUpdate,{new:true})
-        console.log(`${movieTitle} updated successfully : `,changingData)
+// async function updateMovieDetails(movieTitle,valueToUpdate){
+//     await initializeDatabase()
+//     try {
+//         const changingData = await Hotel.findOneAndUpdate({name:movieTitle},valueToUpdate,{new:true})
+//         console.log(`${movieTitle} updated successfully : `,changingData)
 
-    } catch(err) {
-        console.log(`Error changing movieTitle [${movieTitle}]`,err)
-    }
-}
+//     } catch(err) {
+//         console.log(`Error changing movieTitle [${movieTitle}]`,err)
+//     }
+// }
 
 
 // updateMovieDetails("The Grand Meridian",{rating:4.44})
@@ -208,29 +292,29 @@ async function updateMovieDetails(movieTitle,valueToUpdate){
 // BE2.3_HW2
 
 
-async function updateHotelName(hotelId,hotelName){
-    await initializeDatabase()
-    try {
-        const updatedData = await Hotel.findByIdAndUpdate(hotelId,hotelName,{new:true})
-        console.log(`${hotelName} updated successfully as :`,updatedData)
+// async function updateHotelName(hotelId,hotelName){
+//     await initializeDatabase()
+//     try {
+//         const updatedData = await Hotel.findByIdAndUpdate(hotelId,hotelName,{new:true})
+//         console.log(`${hotelName} updated successfully as :`,updatedData)
 
-    } catch(err) {
-        console.log(`Error updating hotel name `,err)
-    }
-}
+//     } catch(err) {
+//         console.log(`Error updating hotel name `,err)
+//     }
+// }
 
 // updateHotelName("6a1ed7aafdd57125f93b26ae",{name:"new Hotel"})
 
-async function updateHotelData(hotelName,valueToUpdate){
-    await initializeDatabase()
-    try {
-        const updatedData = await Hotel.findOneAndUpdate({name:hotelName},valueToUpdate,{new:true})
-        console.log(`${hotelName} updated successfully`,updatedData)
+// async function updateHotelData(hotelName,valueToUpdate){
+//     await initializeDatabase()
+//     try {
+//         const updatedData = await Hotel.findOneAndUpdate({name:hotelName},valueToUpdate,{new:true})
+//         console.log(`${hotelName} updated successfully`,updatedData)
 
-    } catch (err) {
-        console.log(`unable to find hotel ${hotelName} `,err)
-    }
-}
+//     } catch (err) {
+//         console.log(`unable to find hotel ${hotelName} `,err)
+//     }
+// }
 
 
 
@@ -241,81 +325,81 @@ async function updateHotelData(hotelName,valueToUpdate){
 
 
 
-async function updatePhoneNumber(phoneNumber,updatedPhoneNumber){
-    await initializeDatabase()
-    try {
-        const updateNumber = await Hotel.findOneAndUpdate({phoneNumber:updatedPhoneNumber})
-        console.log("phone number updated successfully as ",updatedPhoneNumber)
+// async function updatePhoneNumber(phoneNumber,updatedPhoneNumber){
+//     await initializeDatabase()
+//     try {
+//         const updateNumber = await Hotel.findOneAndUpdate({phoneNumber:updatedPhoneNumber})
+//         console.log("phone number updated successfully as ",updatedPhoneNumber)
 
-    } catch(err) {
-        console.log("Error updating phone number : ",err)
-    }
-}
+//     } catch(err) {
+//         console.log("Error updating phone number : ",err)
+//     }
+// }
 
 // updatePhoneNumber("+1299655890","+1997687392")
 
 
-async function deleteHotel(hotelId) {
-    await initializeDatabase()
-    try {
-        const deleteMovie = await Hotel.findByIdAndDelete(hotelId)
-        console.log("Hotel data deleted successfully",deleteMovie)
+// async function deleteHotel(hotelId) {
+//     await initializeDatabase()
+//     try {
+//         const deleteMovie = await Hotel.findByIdAndDelete(hotelId)
+//         console.log("Hotel data deleted successfully",deleteMovie)
 
-    } catch(err){
-        console.log("An error occured while deleting hotel: ",err)
-    }
-}
+//     } catch(err){
+//         console.log("An error occured while deleting hotel: ",err)
+//     }
+// }
 
 //  deleteHotel("6a1ed7aafdd57125f93b26ae")
 
-async function deleteHotelByData(hotelTitle){
-    await initializeDatabase()
-    try {
-        const deleteMovie = await Hotel.findOneAndDelete({name:hotelTitle})
-        console.log(`${hotelTitle} deleted successfully`,deleteHotel)
+// async function deleteHotelByData(hotelTitle){
+//     await initializeDatabase()
+//     try {
+//         const deleteMovie = await Hotel.findOneAndDelete({name:hotelTitle})
+//         console.log(`${hotelTitle} deleted successfully`,deleteHotel)
 
-    } catch(err) {
-        console.log("Error loading data",err)
-    }
-}
+//     } catch(err) {
+//         console.log("Error loading data",err)
+//     }
+// }
 
 // deleteHotelByData("Azure Bay Resort")
 
 // deleteHotelById
 
-async function deleteHotelById(hotelId){
-    await initializeDatabase()
-    try {
-        const deleteData = await Hotel.findByIdAndDelete(hotelId)
-        console.log(`Hotel data with ${hotelId} deleted successfully`)
-    } catch(err) {
-        console.log("Error deleteing hotel data by id ",err)
-    }
-}
+// async function deleteHotelById(hotelId){
+//     await initializeDatabase()
+//     try {
+//         const deleteData = await Hotel.findByIdAndDelete(hotelId)
+//         console.log(`Hotel data with ${hotelId} deleted successfully`)
+//     } catch(err) {
+//         console.log("Error deleteing hotel data by id ",err)
+//     }
+// }
 
-deleteHotelById("6a1ed7abfdd57125f93b26b1")
+// deleteHotelById("6a1ed7abfdd57125f93b26b1")
 
 
 // deleteHotelByPhoneNumber
 
-async function deleteHotelByPhoneNumber(phoneNum) {
-    await initializeDatabase()
-    try {
-        const deleteData = await Hotel.findOneAndDelete({phoneNumber:phoneNum})
-        console.log(`data with ${phoneNum} deleted successfully : `,deleteData)
+// async function deleteHotelByPhoneNumber(phoneNum) {
+//     await initializeDatabase()
+//     try {
+//         const deleteData = await Hotel.findOneAndDelete({phoneNumber:phoneNum})
+//         console.log(`data with ${phoneNum} deleted successfully : `,deleteData)
 
-    } catch(err) {
-        console.log("Error loading data : ",err)
-    }
+//     } catch(err) {
+//         console.log("Error loading data : ",err)
+//     }
 
-    try {
+//     try {
 
-    } catch(err) {
-        console.log("Error deleteing data with phone Number : ",err)
-    }
-}
+//     } catch(err) {
+//         console.log("Error deleteing data with phone Number : ",err)
+//     }
+// }
 
-deleteHotelByPhoneNumber("+918887776655")
+// deleteHotelByPhoneNumber("+918887776655")
 
 
 
@@ -365,20 +449,10 @@ deleteHotelByPhoneNumber("+918887776655")
 // findByPhoneNum("+1299655890")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // console.log(hotelData)
+
+const PORT = 2212
+
+app.listen(PORT,()=>{
+    console.log(`Server is running on Port ${PORT}`)
+})
